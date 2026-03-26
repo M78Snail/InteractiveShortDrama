@@ -27,7 +27,6 @@ PersonalAi/
 
 ## ✨ 新功能：节点图编辑器
 
-位置：`/Users/duxiaoming/PersonalAi/studio/`
 
 ### 4 种节点类型
 
@@ -54,15 +53,15 @@ open index.html
 
 ## 🎯 工作流程
 
-1. **用节点图设计剧情
+1. **用节点图设计剧情**
    ```
-   [片段剧情] → [观众互动] → [分支判断] → [支线A/支线B
+   [片段剧情] → [选择节点] → [支线A/支线B] → [片段剧情] 
    ```
 
-2. **导出 story.json
+2. **导出 story.json**
    点击「导出 Flutter」
 
-3. **素材放入 Flutter 项目
+3. **素材放入 Flutter 项目**
    ```
    assets/images/
    assets/videos/
@@ -85,6 +84,3 @@ flutter pub get
 flutter run
 ```
 
-## 📝 给老婆的创意说明
-
-见 `docs/idea.html` 打开看设计图！

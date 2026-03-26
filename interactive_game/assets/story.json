@@ -6,7 +6,12 @@
       "type": "scene",
       "mediaType": "image",
       "dialogue": "",
-      "choices": [],
+      "choices": [
+        {
+          "text": "继续",
+          "nextNode": "node_1774506408904"
+        }
+      ],
       "background": "assets/images/node_1774506366583.jpg",
       "autoContinue": true
     },
