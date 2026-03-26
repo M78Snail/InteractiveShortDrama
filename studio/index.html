@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎬 互动影视工作室 - Node Editor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- 顶部工具栏 -->
+    <div class="toolbar">
+        <div class="toolbar-left">
+            <span class="logo">🎬 互动影视工作室</span>
+            <input type="text" id="projectName" class="project-name" value="我的新项目" placeholder="项目名称">
+        </div>
+        <div class="toolbar-center">
+            <button class="btn btn-secondary" onclick="newProject()">📄 新建</button>
+            <button class="btn btn-secondary" onclick="saveProject()">💾 保存</button>
+            <button class="btn btn-secondary" onclick="loadProject()">📂 加载</button>
+            <button class="btn btn-primary" onclick="exportToFlutter()">📱 导出 Flutter</button>
+        </div>
+        <div class="toolbar-right">
+            <span id="autoSaveStatus" class="autosave-status"></span>
+        </div>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-container">
+        <!-- 左侧节点面板 -->
+        <div class="node-palette">
+            <h3>📦 节点库</h3>
+            <div class="node-template" draggable="true" data-type="scene">
+                <div class="node-icon">🎬</div>
+                <div class="node-title">剧情节点</div>
+                <div class="node-desc">播放视频/图片，播完自动继续</div>
+            </div>
+            <div class="node-template" draggable="true" data-type="choice">
+                <div class="node-icon">🎮</div>
+                <div class="node-title">选择节点</div>
+                <div class="node-desc">播放+暂停，等待观众选择</div>
+            </div>
+
+            <hr class="divider">
+
+            <h3>💡 使用说明</h3>
+            <div class="help-box">
+                <p><strong>剧情节点:</strong><br>
+                放一段视频/图片，播完自动进入下一个节点。</p>
+                <br><br>
+                <strong>选择节点:</strong><br>
+                放视频/图片，暂停显示选项，观众选不同选项走不同支线。</p>
+                <br><br>
+                <strong>连线:</strong><br>
+                从右边的圆点拖到另一个节点的左边圆点。</p>
+            </div>
+
+            <hr class="divider">
+
+            <h3>🛠️ 工具</h3>
+            <button class="btn btn-full" onclick="clearCanvas()">清空画布</button>
+            <button class="btn btn-full" onclick="autoLayout()">自动排版</button>
+            <button class="btn btn-full" onclick="validateGraph()">✅ 验证项目</button>
+
+            <hr class="divider">
+
+            <h3>📊 项目信息</h3>
+            <div class="info-panel">
+                <div class="info-row">
+                    <span>节点数量:</span>
+                    <span id="nodeCount">0</span>
+                </div>
+                <div class="info-row">
+                    <span>连接数量:</span>
+                    <span id="connectionCount">0</span>
+                </div>
+                <div class="info-row">
+                    <span>起始节点:</span>
+                    <span id="startNode">未设置</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间画布 -->
+        <div class="canvas-container">
+            <svg class="connections-layer" id="connectionsLayer"></svg>
+            <div class="canvas" id="canvas">
+                <!-- 节点会被动态添加到这里 -->
+            </div>
+            <!-- 缩放控制 -->
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomOut()">−</button>
+                <span id="zoomLevel">100%</span>
+                <button class="zoom-btn" onclick="zoomIn()">+</button>
+            </div>
+        </div>
+
+        <!-- 右侧属性面板 -->
+        <div class="properties-panel" id="propertiesPanel">
+            <div class="empty-state" id="emptyState">
+                <div class="empty-icon">🎯</div>
+                <p>选择一个节点<br>编辑属性</p>
+            </div>
+            <div class="properties-content" id="propertiesContent" style="display: none;">
+                <!-- 动态属性内容 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div class="context-menu" id="contextMenu">
+        <div class="menu-item" onclick="addNodeAt('scene')">🎬 添加剧情节点</div>
+        <div class="menu-item" onclick="addNodeAt('choice')">🎮 添加选择节点</div>
+        <div class="menu-divider"></div>
+        <div class="menu-item danger" onclick="deleteSelectedNode()">🗑️ 删除节点</div>
+    </div>
+
+    <!-- Toast 通知 -->
+    <div class="toast" id="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
