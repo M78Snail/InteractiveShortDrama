@@ -17,7 +17,8 @@ let state = {
     connectingFrom: null,
     tempConnection: null,
     dragOffset: { x: 0, y: 0 },
-    contextMenuPos: { x: 0, y: 0 }
+    contextMenuPos: { x: 0, y: 0 },
+    contextMenuConnectionId: null
 };
 
 // 节点类型配置 - 简化为2种！
@@ -87,6 +88,7 @@ function setupEventListeners() {
 
     document.addEventListener('click', () => {
         document.getElementById('contextMenu').classList.remove('visible');
+        document.getElementById('connectionContextMenu').classList.remove('visible');
     });
 
     let isPanning = false;
@@ -108,7 +110,8 @@ function setupEventListeners() {
         }
 
         if (state.isConnecting && state.connectingFrom) {
-            updateTempConnection(e.clientX, e.clientY);
+            const rect = document.querySelector('.canvas-container').getBoundingClientRect();
+            updateTempConnection(e.clientX - rect.left, e.clientY - rect.top);
         }
     });
 
@@ -153,8 +156,8 @@ function handleDrop(e) {
     const nodeType = e.dataTransfer.getData('nodeType');
     if (nodeType) {
         const rect = document.querySelector('.canvas-container').getBoundingClientRect();
-        const x = (e.clientX - rect.left - state.pan.x) / state.zoom;
-        const y = (e.clientY - rect.top - state.pan.y) / state.zoom;
+        const x = e.clientX - rect.left - state.pan.x;
+        const y = e.clientY - rect.top - state.pan.y;
         addNode(nodeType, x, y);
     }
 }
@@ -164,8 +167,8 @@ function handleContextMenu(e) {
     e.preventDefault();
     const rect = document.querySelector('.canvas-container').getBoundingClientRect();
     state.contextMenuPos = {
-        x: (e.clientX - rect.left - state.pan.x) / state.zoom,
-        y: (e.clientY - rect.top - state.pan.y) / state.zoom
+        x: e.clientX - rect.left - state.pan.x,
+        y: e.clientY - rect.top - state.pan.y
     };
 
     const menu = document.getElementById('contextMenu');
@@ -244,8 +247,8 @@ function startDragNode(e, nodeId) {
     state.selectedNode = nodeId;
     const node = state.nodes.find(n => n.id === nodeId);
     state.dragOffset = {
-        x: e.clientX / state.zoom - node.x,
-        y: e.clientY / state.zoom - node.y
+        x: e.clientX - node.x,
+        y: e.clientY - node.y
     };
 
     document.addEventListener('mousemove', dragNode);
@@ -257,8 +260,8 @@ function dragNode(e) {
 
     const node = state.nodes.find(n => n.id === state.selectedNode);
     if (node) {
-        node.x = e.clientX / state.zoom - state.dragOffset.x;
-        node.y = e.clientY / state.zoom - state.dragOffset.y;
+        node.x = e.clientX - state.dragOffset.x;
+        node.y = e.clientY - state.dragOffset.y;
         render();
     }
 }
@@ -283,6 +286,7 @@ function endConnection(e, nodeId, portType) {
 
     const from = state.connectingFrom;
 
+    // 确保：必须从输出点连接到输入点，且不是同一个节点
     if (from.nodeId !== nodeId && from.portType === 'output' && portType === 'input') {
         const exists = state.connections.some(
             c => c.from === from.nodeId && c.to === nodeId && c.choiceIndex === from.choiceIndex
@@ -314,15 +318,38 @@ function updateTempConnection(x, y) {
     renderConnections();
 }
 
+function showConnectionContextMenu(e, connId) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    state.contextMenuConnectionId = connId;
+
+    const menu = document.getElementById('connectionContextMenu');
+    menu.style.left = e.clientX + 'px';
+    menu.style.top = e.clientY + 'px';
+    menu.classList.add('visible');
+}
+
+function deleteContextMenuConnection() {
+    if (state.contextMenuConnectionId) {
+        state.connections = state.connections.filter(c => c.id !== state.contextMenuConnectionId);
+        state.contextMenuConnectionId = null;
+        document.getElementById('connectionContextMenu').classList.remove('visible');
+        render();
+    }
+}
+
 function deleteConnection(connId) {
-    state.connections = state.connections.filter(c => c.id !== connId);
-    render();
+    // 不再直接点击删除
 }
 
 // ========== 渲染 ==========
 function render() {
     renderNodes();
-    renderConnections();
+    // 先渲染节点，等下一帧再渲染连线（确保能获取到 DOM 位置）
+    requestAnimationFrame(() => {
+        renderConnections();
+    });
     updateInfo();
 }
 
@@ -337,10 +364,8 @@ function renderNodes() {
 
         const el = document.createElement('div');
         el.className = `graph-node ${node.type} ${isSelected ? 'selected' : ''}`;
-        el.style.left = (node.x * state.zoom + state.pan.x) + 'px';
-        el.style.top = (node.y * state.zoom + state.pan.y) + 'px';
-        el.style.transform = `scale(${state.zoom})`;
-        el.style.transformOrigin = 'top left';
+        el.style.left = (node.x + state.pan.x) + 'px';
+        el.style.top = (node.y + state.pan.y) + 'px';
         el.dataset.nodeId = node.id;
 
         el.innerHTML = `
@@ -398,53 +423,83 @@ function getNodeSummary(node) {
 
 function renderConnections() {
     const svg = document.getElementById('connectionsLayer');
+    const canvasRect = document.querySelector('.canvas-container').getBoundingClientRect();
     let html = '';
 
     state.connections.forEach(conn => {
-        const fromNode = state.nodes.find(n => n.id === conn.from);
-        const toNode = state.nodes.find(n => n.id === conn.to);
+        const fromEl = document.querySelector(`[data-node-id="${conn.from}"]`);
+        const toEl = document.querySelector(`[data-node-id="${conn.to}"]`);
 
-        if (fromNode && toNode) {
-            const fromPos = getPortPosition(fromNode, 'output', conn.choiceIndex);
-            const toPos = getPortPosition(toNode, 'input', null);
+        if (fromEl && toEl) {
+            const fromPos = getPortCenter(fromEl, 'output', conn.choiceIndex);
+            const toPos = getPortCenter(toEl, 'input', null);
 
-            const x1 = fromPos.x * state.zoom + state.pan.x;
-            const y1 = fromPos.y * state.zoom + state.pan.y;
-            const x2 = toPos.x * state.zoom + state.pan.x;
-            const y2 = toPos.y * state.zoom + state.pan.y;
+            if (fromPos && toPos) {
+                const x1 = fromPos.x - canvasRect.left;
+                const y1 = fromPos.y - canvasRect.top;
+                const x2 = toPos.x - canvasRect.left;
+                const y2 = toPos.y - canvasRect.top;
 
-            const path = createBezierPath(x1, y1, x2, y2);
+                const path = createBezierPath(x1, y1, x2, y2);
 
-            html += `<path class="connection-path" d="${path}"
-                          onclick="deleteConnection('${conn.id}')"
-                          title="点击删除连线"/>`;
+                html += `<path class="connection-path" d="${path}"
+                              oncontextmenu="showConnectionContextMenu(event, '${conn.id}')"
+                              title="右键删除连线"/>`;
 
-            if (conn.choiceIndex !== null && fromNode.type === 'choice') {
-                const choice = fromNode.data.choices[conn.choiceIndex];
-                if (choice) {
-                    const midX = (x1 + x2) / 2;
-                    const midY = (y1 + y2) / 2 - 10;
-                    html += `<text x="${midX}" y="${midY}"
-                                  fill="#ffd700" font-size="12" text-anchor="middle"
-                                  style="pointer-events: none;">${choice.text.substring(0, 8)}...</text>`;
+                if (conn.choiceIndex !== null) {
+                    const fromNode = state.nodes.find(n => n.id === conn.from);
+                    if (fromNode && fromNode.data.choices && fromNode.data.choices[conn.choiceIndex]) {
+                        const choice = fromNode.data.choices[conn.choiceIndex];
+                        const midX = (x1 + x2) / 2;
+                        const midY = (y1 + y2) / 2 - 10;
+                        html += `<text x="${midX}" y="${midY}"
+                                      fill="#ffd700" font-size="12" text-anchor="middle"
+                                      style="pointer-events: none;">${choice.text.substring(0, 8)}...</text>`;
+                    }
                 }
             }
         }
     });
 
     if (state.isConnecting && state.connectingFrom && state.tempConnection) {
-        const fromNode = state.nodes.find(n => n.id === state.connectingFrom.nodeId);
-        if (fromNode) {
-            const fromPos = getPortPosition(fromNode, 'output', state.connectingFrom.choiceIndex);
-            const x1 = fromPos.x * state.zoom + state.pan.x;
-            const y1 = fromPos.y * state.zoom + state.pan.y;
+        const fromEl = document.querySelector(`[data-node-id="${state.connectingFrom.nodeId}"]`);
+        if (fromEl) {
+            const fromPos = getPortCenter(fromEl, 'output', state.connectingFrom.choiceIndex);
+            if (fromPos) {
+                const x1 = fromPos.x - canvasRect.left;
+                const y1 = fromPos.y - canvasRect.top;
 
-            const path = createBezierPath(x1, y1, state.tempConnection.x, state.tempConnection.y);
-            html += `<path class="temp-connection" d="${path}"/>`;
+                const path = createBezierPath(x1, y1, state.tempConnection.x, state.tempConnection.y);
+                html += `<path class="temp-connection" d="${path}"/>`;
+            }
         }
     }
 
     svg.innerHTML = html;
+}
+
+// 通过 DOM 获取端口圆心的屏幕坐标
+function getPortCenter(nodeEl, portType, choiceIndex = null) {
+    let portEl;
+
+    if (portType === 'input') {
+        portEl = nodeEl.querySelector('.port.input');
+    } else {
+        if (choiceIndex !== null) {
+            const outputs = nodeEl.querySelectorAll('.port.branch-output');
+            portEl = outputs[choiceIndex];
+        } else {
+            portEl = nodeEl.querySelector('.port.output');
+        }
+    }
+
+    if (!portEl) return null;
+
+    const rect = portEl.getBoundingClientRect();
+    return {
+        x: rect.left + rect.width / 2,
+        y: rect.top + rect.height / 2
+    };
 }
 
 function getPortPosition(node, portType, choiceIndex = null) {

@@ -230,7 +230,7 @@ body {
 /* ========== 节点样式 ========== */
 .graph-node {
     position: absolute;
-    min-width: 200px;
+    width: 220px;
     background: rgba(22, 33, 62, 0.95);
     border: 2px solid rgba(255, 255, 255, 0.15);
     border-radius: 14px;
@@ -238,6 +238,7 @@ body {
     user-select: none;
     z-index: 10;
     transition: box-shadow 0.2s, border-color 0.2s;
+    transform-origin: top left;
 }
 
 .graph-node:hover {
@@ -342,15 +343,15 @@ body {
 }
 
 .port.input {
-    margin-left: -30px;
+    margin-left: -10px;
 }
 
 .port.output {
-    margin-right: -30px;
+    margin-right: -10px;
 }
 
 .port.branch-output {
-    margin: 6px -30px 6px 0;
+    margin: 6px -10px 6px 0;
 }
 
 .branch-outputs {
