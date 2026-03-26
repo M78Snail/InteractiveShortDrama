@@ -18,7 +18,8 @@ let state = {
     tempConnection: null,
     dragOffset: { x: 0, y: 0 },
     contextMenuPos: { x: 0, y: 0 },
-    contextMenuConnectionId: null
+    contextMenuConnectionId: null,
+    uploadedFiles: {}  // 存储上传的文件: { nodeId: { data: Blob, name: string, type: 'image'|'video' } }
 };
 
 // 节点类型配置 - 简化为2种！
@@ -552,6 +553,7 @@ function renderProperties() {
     `;
 
     // 两种节点都有媒体上传
+    const uploadedFile = state.uploadedFiles[node.id];
     html += `
         <div class="prop-section">
             <div class="prop-section-title">媒体设置</div>
@@ -568,9 +570,10 @@ function renderProperties() {
                     <input type="file" id="mediaFile" accept="${node.data.mediaType === 'video' ? 'video/*' : 'image/*'}"
                            onchange="handleMediaUpload(this)">
                     <div>📤 点击上传${node.data.mediaType === 'video' ? '视频' : '图片'}</div>
-                    ${node.data.videoFile || node.data.imageFile ?
-                        '<div style="font-size: 12px; color: #64ff8c; margin-top: 8px;">✓ 已上传文件</div>' : ''}
+                    ${uploadedFile ?
+                        `<div style="font-size: 12px; color: #64ff8c; margin-top: 8px;">✓ ${uploadedFile.name}</div>` : ''}
                 </div>
+                ${uploadedFile ? renderFilePreview(node.id, uploadedFile) : ''}
             </div>
         </div>
     `;
@@ -674,7 +677,31 @@ function updateChoice(index, key, value) {
 }
 
 function handleMediaUpload(input) {
-    showToast('文件已选择（演示模式）', 'success');
+    const file = input.files[0];
+    if (!file) return;
+
+    const node = state.nodes.find(n => n.id === state.selectedNode);
+    if (!node) return;
+
+    // 存储文件
+    state.uploadedFiles[node.id] = {
+        data: file,
+        name: file.name,
+        type: node.data.mediaType
+    };
+
+    showToast('文件已上传', 'success');
+    renderProperties();
+}
+
+function renderFilePreview(nodeId, fileInfo) {
+    if (fileInfo.type === 'image') {
+        const url = URL.createObjectURL(fileInfo.data);
+        return `<div class="file-preview"><img src="${url}" alt="预览"></div>`;
+    } else {
+        const url = URL.createObjectURL(fileInfo.data);
+        return `<div class="file-preview"><video src="${url}" controls style="max-width:100%; max-height:150px;"></video></div>`;
+    }
 }
 
 // ========== 缩放 ==========
@@ -696,11 +723,22 @@ function updateCanvasTransform() {
 
 // ========== 项目管理 ==========
 function saveProject() {
+    // 构建文件元数据（不保存实际文件内容，只保存引用信息）
+    const fileMetadata = {};
+    for (const nodeId of Object.keys(state.uploadedFiles)) {
+        const f = state.uploadedFiles[nodeId];
+        fileMetadata[nodeId] = {
+            name: f.name,
+            type: f.type
+        };
+    }
+
     const project = {
         name: state.projectName,
         nodes: state.nodes,
         connections: state.connections,
         startNodeId: state.startNodeId,
+        fileMetadata: fileMetadata,
         savedAt: new Date().toISOString()
     };
 
@@ -714,7 +752,7 @@ function saveProject() {
     a.click();
     URL.revokeObjectURL(url);
 
-    showToast('项目已保存', 'success');
+    showToast('项目已保存（媒体文件需重新上传）', 'success');
 }
 
 function loadProject() {
@@ -746,6 +784,17 @@ function loadProjectData(project) {
     state.connections = project.connections || [];
     state.startNodeId = project.startNodeId;
     state.selectedNode = null;
+    state.uploadedFiles = {};  // 重置上传文件
+
+    // 如果有文件元数据，显示提示
+    if (project.fileMetadata) {
+        const count = Object.keys(project.fileMetadata).length;
+        if (count > 0) {
+            setTimeout(() => {
+                showToast(`项目包含 ${count} 个媒体文件，请重新上传`, 'info');
+            }, 500);
+        }
+    }
 
     document.getElementById('projectName').value = state.projectName;
     render();
@@ -799,24 +848,69 @@ function startAutoSave() {
 }
 
 // ========== 导出 Flutter ==========
-function exportToFlutter() {
+async function exportToFlutter() {
     if (!state.startNodeId) {
         showToast('请先设置起始节点', 'error');
         return;
     }
 
-    const story = convertToFlutterStory();
-    const json = JSON.stringify(story, null, 2);
+    if (typeof JSZip === 'undefined') {
+        showToast('JSZip 库加载失败，请刷新页面重试', 'error');
+        return;
+    }
 
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'story.json';
-    a.click();
-    URL.revokeObjectURL(url);
+    showToast('正在生成导出包...', 'info');
 
-    showToast('Flutter story.json 已导出', 'success');
+    try {
+        const zip = new JSZip();
+        const story = convertToFlutterStory();
+
+        // 添加 story.json
+        zip.file('story.json', JSON.stringify(story, null, 2));
+
+        // 创建 images 和 videos 文件夹
+        const imagesFolder = zip.folder('images');
+        const videosFolder = zip.folder('videos');
+
+        // 添加所有上传的文件
+        let fileCount = 0;
+        for (const nodeId of Object.keys(state.uploadedFiles)) {
+            const fileInfo = state.uploadedFiles[nodeId];
+            const node = state.nodes.find(n => n.id === nodeId);
+
+            if (!node) continue;
+
+            // 根据JSON中的命名规则确定文件名
+            let targetFileName;
+            let targetFolder;
+
+            if (node.data.mediaType === 'image') {
+                targetFileName = nodeId + '.jpg';
+                targetFolder = imagesFolder;
+            } else {
+                targetFileName = nodeId + '.mp4';
+                targetFolder = videosFolder;
+            }
+
+            // 添加文件到zip
+            targetFolder.file(targetFileName, fileInfo.data);
+            fileCount++;
+        }
+
+        // 生成zip并下载
+        const zipContent = await zip.generateAsync({ type: 'blob' });
+        const url = URL.createObjectURL(zipContent);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = (state.projectName || 'flutter_project') + '.zip';
+        a.click();
+        URL.revokeObjectURL(url);
+
+        showToast(`导出成功！包含 ${fileCount} 个媒体文件`, 'success');
+    } catch (error) {
+        console.error('导出失败:', error);
+        showToast('导出失败：' + error.message, 'error');
+    }
 }
 
 function convertToFlutterStory() {

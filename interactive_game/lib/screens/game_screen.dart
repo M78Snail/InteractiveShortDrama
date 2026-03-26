@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../providers/story_provider.dart';
 import '../models/story.dart';
 import '../models/story_node.dart';
+import '../models/choice.dart';
 import '../widgets/dialogue_widget.dart';
 import '../widgets/choice_button.dart';
 import '../widgets/video_player_widget.dart';
@@ -19,6 +20,7 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen> {
   bool _isLoading = true;
+  bool _showChoices = false;
 
   @override
   void initState() {
@@ -34,6 +36,7 @@ class _GameScreenState extends State<GameScreen> {
 
       if (mounted) {
         await context.read<StoryProvider>().loadStory(story);
+        _resetShowChoices();
       }
     } catch (e) {
       debugPrint('加载剧本失败: $e');
@@ -43,6 +46,34 @@ class _GameScreenState extends State<GameScreen> {
           _isLoading = false;
         });
       }
+    }
+  }
+
+  void _resetShowChoices() {
+    final provider = context.read<StoryProvider>();
+    final node = provider.currentNode;
+    if (node != null) {
+      // choice 类型的节点初始显示选择按钮
+      // scene 类型的节点初始不显示，等媒体播放完
+      setState(() {
+        _showChoices = node.type == NodeType.choice;
+      });
+    }
+  }
+
+  void _onMediaComplete() {
+    final provider = context.read<StoryProvider>();
+    final node = provider.currentNode;
+    if (node == null) return;
+
+    if (node.type == NodeType.scene && node.autoContinue && node.choices.isNotEmpty) {
+      // scene 类型且 autoContinue，自动跳转到第一个选项的 nextNode
+      provider.makeChoice(node.choices.first.nextNodeId);
+    } else {
+      // 显示选择按钮
+      setState(() {
+        _showChoices = true;
+      });
     }
   }
 
@@ -58,6 +89,10 @@ class _GameScreenState extends State<GameScreen> {
                   if (!provider.isLoaded || provider.currentNode == null) {
                     return const Center(child: CircularProgressIndicator());
                   }
+                  // 监听节点变化，重置显示状态
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _resetShowChoices();
+                  });
                   return _buildGameContent(provider);
                 },
               ),
@@ -85,7 +120,7 @@ class _GameScreenState extends State<GameScreen> {
                       dialogue: node.dialogue,
                     ),
                   if (node.isEnding) _buildEnding(node),
-                  if (node.choices.isNotEmpty)
+                  if (_showChoices && node.choices.isNotEmpty && !node.isEnding)
                     _buildChoices(node.choices, provider),
                   const SizedBox(height: 24),
                 ],
@@ -128,12 +163,22 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   Widget _buildBackground(StoryNode node) {
-    if (node.type == NodeType.video && node.video != null) {
+    if (node.mediaType == MediaType.video && node.video != null) {
       return VideoPlayerWidget(
         videoPath: node.video!,
-        onVideoComplete: () {},
+        onVideoComplete: _onMediaComplete,
       );
     } else if (node.background != null) {
+      // 图片类型，模拟播放完成，至少停留4秒
+      if (node.type == NodeType.scene && node.autoContinue) {
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) _onMediaComplete();
+        });
+      } else if (node.type == NodeType.scene) {
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) _onMediaComplete();
+        });
+      }
       return Image.asset(
         node.background!,
         fit: BoxFit.cover,
@@ -157,7 +202,7 @@ class _GameScreenState extends State<GameScreen> {
     );
   }
 
-  Widget _buildChoices(List<dynamic> choices, StoryProvider provider) {
+  Widget _buildChoices(List<Choice> choices, StoryProvider provider) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: choices.asMap().entries.map((entry) {
@@ -166,7 +211,12 @@ class _GameScreenState extends State<GameScreen> {
         return ChoiceButton(
           text: choice.text,
           index: index,
-          onTap: () => provider.makeChoice(choice.nextNodeId),
+          onTap: () {
+            setState(() {
+              _showChoices = false;
+            });
+            provider.makeChoice(choice.nextNodeId);
+          },
         );
       }).toList(),
     );

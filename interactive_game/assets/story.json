@@ -1,125 +1,48 @@
 {
-  "title": "电梯偶遇",
-  "startNode": "node_1",
+  "title": "救美女",
+  "startNode": "node_1774506366583",
   "nodes": {
-    "node_1": {
-      "type": "image",
-      "background": "assets/images/elevator.jpg",
-      "dialogue": "周一的早晨，写字楼的电梯里挤满了人。你好不容易挤了进去，电梯门缓缓关上。",
-      "choices": [
-        {"text": "整理一下领带", "nextNode": "node_2a"},
-        {"text": "低头看手机", "nextNode": "node_2b"},
-        {"text": "观察周围的人", "nextNode": "node_2c"}
-      ]
+    "node_1774506366583": {
+      "type": "scene",
+      "mediaType": "image",
+      "dialogue": "",
+      "choices": [],
+      "background": "assets/images/node_1774506366583.jpg",
+      "autoContinue": true
     },
-    "node_2a": {
-      "type": "image",
-      "background": "assets/images/elevator.jpg",
-      "dialogue": "你开始整理领带，却不小心碰到了旁边的人。「啊，抱歉！」你连忙道歉。",
+    "node_1774506408904": {
+      "type": "choice",
+      "mediaType": "image",
+      "dialogue": "美女在被僵尸追杀，请做出你的选择：",
       "choices": [
-        {"text": "抬头看向对方", "nextNode": "node_3a"},
-        {"text": "继续低头道歉", "nextNode": "node_3b"}
-      ]
+        {
+          "text": "救她",
+          "nextNode": "node_1774507593605"
+        },
+        {
+          "text": "逃跑",
+          "nextNode": "node_1774507595171"
+        }
+      ],
+      "background": "assets/images/node_1774506408904.jpg",
+      "question": "美女在被僵尸追杀，请做出你的选择：",
+      "timeLimit": 0
     },
-    "node_2b": {
-      "type": "image",
-      "background": "assets/images/elevator.jpg",
-      "dialogue": "你掏出手机假装看消息，却发现根本没有信号。电梯里一片沉默，只有轻微的机械声。",
-      "choices": [
-        {"text": "收起手机", "nextNode": "node_3c"}
-      ]
+    "node_1774507593605": {
+      "type": "scene",
+      "mediaType": "image",
+      "dialogue": "",
+      "choices": [],
+      "background": "assets/images/node_1774507593605.jpg",
+      "autoContinue": true
     },
-    "node_2c": {
-      "type": "image",
-      "background": "assets/images/elevator.jpg",
-      "dialogue": "你环顾四周，发现角落里站着一个熟悉的身影——是隔壁部门的林晓！她似乎也看到了你。",
-      "choices": [
-        {"text": "主动打招呼", "nextNode": "node_3a"},
-        {"text": "假装没看见", "nextNode": "node_3d"}
-      ]
-    },
-    "node_3a": {
-      "type": "image",
-      "background": "assets/images/elevator.jpg",
-      "character": "assets/images/linxiao_smile.png",
-      "dialogue": "林晓对你微微一笑：「这么巧？你也在这层上班？」她的笑容很温暖，让你有些紧张。",
-      "choices": [
-        {"text": "是啊，好巧！", "nextNode": "node_4a"},
-        {"text": "嗯...我在隔壁部门", "nextNode": "node_4b"}
-      ]
-    },
-    "node_3b": {
-      "type": "image",
-      "background": "assets/images/elevator.jpg",
-      "dialogue": "「没关系。」一个温柔的声音响起。你抬头一看，是隔壁部门的林晓！她正微笑着看着你。",
-      "choices": [
-        {"text": "是你啊，抱歉抱歉", "nextNode": "node_4a"}
-      ]
-    },
-    "node_3c": {
-      "type": "image",
-      "background": "assets/images/elevator.jpg",
-      "dialogue": "你收起手机，刚好对上一双眼睛。是林晓！她似乎在看你，见你看来，她微微一笑。",
-      "choices": [
-        {"text": "你好啊", "nextNode": "node_4a"}
-      ]
-    },
-    "node_3d": {
-      "type": "image",
-      "background": "assets/images/elevator.jpg",
-      "dialogue": "你移开视线，但感觉林晓一直在看你。电梯终于到了，你快步走了出去。",
-      "choices": [
-        {"text": "（继续走）", "nextNode": "ending_normal"}
-      ]
-    },
-    "node_4a": {
-      "type": "image",
-      "background": "assets/images/elevator.jpg",
-      "character": "assets/images/linxiao_smile.png",
-      "dialogue": "「我知道你，上次开会你做的报告很棒。」林晓的眼睛亮晶晶的，「对了，这周六有空吗？我想请教你一些问题。」",
-      "choices": [
-        {"text": "没问题，周六见！", "nextNode": "ending_good"},
-        {"text": "周六可能有事...", "nextNode": "node_5a"}
-      ]
-    },
-    "node_4b": {
-      "type": "image",
-      "background": "assets/images/elevator.jpg",
-      "character": "assets/images/linxiao_smile.png",
-      "dialogue": "「这样啊，那以后可以多交流。」林晓依然微笑着，「我叫林晓，很高兴认识你。」电梯到了，她先走了出去。",
-      "choices": [
-        {"text": "（走出电梯）", "nextNode": "ending_normal"}
-      ]
-    },
-    "node_5a": {
-      "type": "image",
-      "background": "assets/images/elevator.jpg",
-      "character": "assets/images/linxiao_smile.png",
-      "dialogue": "「那周日呢？」林晓似乎有些期待，「或者你什么时候有空？」",
-      "choices": [
-        {"text": "那周六还是可以的", "nextNode": "ending_good"},
-        {"text": "下次再说吧", "nextNode": "ending_normal"}
-      ]
-    },
-    "ending_good": {
-      "type": "ending",
-      "background": "assets/images/coffee_shop.jpg",
-      "isEnding": true,
-      "endingTitle": "美好的开始",
-      "dialogue": "周六的咖啡馆，阳光透过窗户洒在林晓的笑脸上。你们聊了很多，从工作到兴趣爱好。临走时，林晓说：「下周还能见面吗？」你知道，这只是一个美好的开始。",
-      "choices": [
-        {"text": "重新开始", "nextNode": "node_1"}
-      ]
-    },
-    "ending_normal": {
-      "type": "ending",
-      "background": "assets/images/office.jpg",
-      "isEnding": true,
-      "endingTitle": "普通的一天",
-      "dialogue": "你回到工位，开始了一天的工作。刚才的电梯偶遇只是一个小插曲，生活还在继续。只是偶尔，你会想起林晓的微笑。也许，下次应该更勇敢一点？",
-      "choices": [
-        {"text": "重新开始", "nextNode": "node_1"}
-      ]
+    "node_1774507595171": {
+      "type": "scene",
+      "mediaType": "image",
+      "dialogue": "",
+      "choices": [],
+      "background": "assets/images/node_1774507595171.jpg",
+      "autoContinue": true
     }
   }
 }
